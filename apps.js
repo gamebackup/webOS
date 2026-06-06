@@ -155,7 +155,7 @@ for i in len(todos) {
         {
           name: 'Calculator',
           code: `// Simple Calculator
-Text "Calculator" style:bold
+Text "Calculator"
 
 a = 0
 b = 0
@@ -175,7 +175,7 @@ Text "Result: {result}" as result
         {
           name: 'Greeting App',
           code: `// Greeting App
-Text "Greeting App" style:bold
+Text "Greeting App"
 
 name = ""
 greeting = "Hello"

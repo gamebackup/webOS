@@ -548,7 +548,7 @@ class WebLangInterpreter {
     }
     if (ast.type === 'Input') {
       el.addEventListener('input', () => {
-        const name = ast.text ? String(this.eval(ast.text)) : null;
+        const name = ast.text ? (ast.text.t === 'Ident' ? ast.text.v : String(this.eval(ast.text))) : null;
         if (name) this.setVar(name, el.value);
       });
     }

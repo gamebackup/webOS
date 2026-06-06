@@ -23,6 +23,7 @@ const OS = {
     this.startBtn = document.getElementById('start-btn');
     this.clock = document.getElementById('clock');
 
+    this.migrateFilesystem();
     this.seedFilesystem();
     this.registerBuiltinApps();
     this.createDesktopIcons();
@@ -38,9 +39,21 @@ const OS = {
     this.loadWallpaper();
   },
 
+  migrateFilesystem() {
+    const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+    let changed = false;
+    for (const key of Object.keys(fs)) {
+      if (!key.includes('/')) {
+        fs['files/' + key] = fs[key];
+        delete fs[key];
+        changed = true;
+      }
+    }
+    if (changed) localStorage.setItem('webfs', JSON.stringify(fs));
+  },
+
   seedFilesystem() {
     const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
-    if (Object.keys(fs).length > 0) return;
 
     const defaults = {
       'system-apps/counter.wl': `// Counter App
@@ -100,7 +113,7 @@ Button "FR"  { greeting = "Bonjour" }
 Button "DE"  { greeting = "Hallo" }`,
     };
     for (let [name, code] of Object.entries(defaults)) {
-      fs[name] = code;
+      if (!(name in fs)) fs[name] = code;
     }
     localStorage.setItem('webfs', JSON.stringify(fs));
   },
