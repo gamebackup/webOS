@@ -11,7 +11,7 @@ class WebLangLexer {
       if (ch === '"') { this.readString(); continue; }
       if (/\d/.test(ch)) { this.readNumber(); continue; }
       if (/[a-zA-Z_]/.test(ch)) { this.readIdentifier(); continue; }
-      if ('{}()[]:'.includes(ch)) { this.tokens.push({t:'PUNCT',v:ch}); this.pos++; continue; }
+      if ('{}()[]:.'.includes(ch)) { this.tokens.push({t:'PUNCT',v:ch}); this.pos++; continue; }
       if (ch === ',') { this.tokens.push({t:'PUNCT',v:','}); this.pos++; continue; }
       let op = this.readOperator();
       if (op) { this.tokens.push({t:'OP',v:op}); continue; }
@@ -25,15 +25,29 @@ class WebLangLexer {
   readString() {
     this.pos++; let s = '';
     while (this.pos < this.src.length && this.src[this.pos] !== '"') {
-      if (this.src[this.pos] === '\\') { this.pos++; s += this.src[this.pos] || ''; this.pos++; }
-      else { s += this.src[this.pos]; this.pos++; }
+      if (this.src[this.pos] === '\\') {
+        this.pos++;
+        const esc = this.src[this.pos];
+        if (esc === 'n') s += '\n';
+        else if (esc === 't') s += '\t';
+        else if (esc === 'r') s += '\r';
+        else if (esc === '\\') s += '\\';
+        else if (esc === '"') s += '"';
+        else s += esc;
+        this.pos++;
+      } else { s += this.src[this.pos]; this.pos++; }
     }
     this.pos++;
     this.tokens.push({t:'STRING',v:s});
   }
   readNumber() {
-    let n = '';
-    while (this.pos < this.src.length && /[\d.]/.test(this.src[this.pos])) { n += this.src[this.pos]; this.pos++; }
+    let n = '', dotSeen = false;
+    while (this.pos < this.src.length) {
+      const ch = this.src[this.pos];
+      if (ch === '.') { if (dotSeen) break; dotSeen = true; n += ch; this.pos++; }
+      else if (/\d/.test(ch)) { n += ch; this.pos++; }
+      else break;
+    }
     this.tokens.push({t:'NUMBER',v:parseFloat(n)});
   }
   readIdentifier() {
@@ -101,7 +115,7 @@ class WebLangParser {
   elementStatement(type) {
     let textExpr = null;
     const nxt = this.peek();
-    if (nxt.t === 'STRING' || nxt.t === 'NUMBER' || nxt.t === 'ID' || nxt.t === 'OP') {
+    if (nxt.t === 'STRING' || nxt.t === 'NUMBER' || nxt.t === 'ID' || (nxt.t === 'OP' && nxt.v === '-')) {
       textExpr = this.expression();
     }
     let props = [];
@@ -326,13 +340,13 @@ class WebLangInterpreter {
     for (let i = this.envStack.length - 1; i >= 0; i--) {
       if (name in this.envStack[i].$vars) { this.envStack[i].$vars[name] = val; return; }
     }
-    this.env().$vars[name] = val;
+    this.env.$vars[name] = val;
   }
 
   evalBinary(ast) {
     const l = this.eval(ast.left), r = this.eval(ast.right);
     switch (ast.op) {
-      case '+': return Array.isArray(l) ? [...l, r] : l + r;
+      case '+': return Array.isArray(l) ? (Array.isArray(r) ? [...l, ...r] : [...l, r]) : l + r;
       case '-': return l - r;
       case '*': return l * r;
       case '/': return l / r;
@@ -499,10 +513,15 @@ class WebLangInterpreter {
           regularStmts.push(stmt);
         }
       }
+      el._mouseDown = false;
+      el.addEventListener('mousedown', () => { el._mouseDown = true; });
+      el.addEventListener('mouseup', () => { el._mouseDown = false; });
+      el.addEventListener('mouseleave', () => { el._mouseDown = false; });
       const attachHandler = (type, body) => {
         if (!body) return;
         const evtMap = { onDown: 'mousedown', onMove: 'mousemove', onUp: 'mouseup' };
         el.addEventListener(evtMap[type], (e) => {
+          if (type === 'onMove' && !el._mouseDown) return;
           const rect = el.getBoundingClientRect();
           const mx = e.clientX - rect.left, my = e.clientY - rect.top;
           const saved = this.outputEl;
