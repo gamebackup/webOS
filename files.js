@@ -152,6 +152,34 @@ WebOS.apps.files = {
             alert(`File: ${name}\n\n${code.slice(0,500)}${code.length > 500 ? '...' : ''}`);
           }
         };
+        item.oncontextmenu = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const fullPath = currentFolder + '/' + name;
+          OS.showContextMenu(e.clientX, e.clientY, [
+            { label: 'Rename', action: 'rename', cb: () => {
+              const newName = prompt('Rename "' + name + '" to:', name);
+              if (newName && newName !== name) {
+                const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+                const oldKey = currentFolder + '/' + name;
+                const newKey = currentFolder + '/' + newName;
+                if (newKey in fs) { alert('A file with that name already exists.'); return; }
+                fs[newKey] = fs[oldKey];
+                delete fs[oldKey];
+                localStorage.setItem('webfs', JSON.stringify(fs));
+                render();
+              }
+            }},
+            { label: 'Delete', action: 'delete', cb: () => {
+              if (confirm('Delete "' + name + '"?')) {
+                const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+                delete fs[currentFolder + '/' + name];
+                localStorage.setItem('webfs', JSON.stringify(fs));
+                render();
+              }
+            }},
+          ]);
+        };
         list.appendChild(item);
       });
     }

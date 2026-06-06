@@ -183,6 +183,13 @@ Button "DE"  { greeting = "Hallo" }`,
       icon.className = 'desktop-icon';
       icon.innerHTML = `<div class="icon">${a.icon}</div><div class="label">${a.label}</div>`;
       icon.ondblclick = () => this.launch(a.id);
+      icon.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showContextMenu(e.clientX, e.clientY, [
+          { label: 'Open', action: 'open', cb: () => this.launch(a.id) },
+        ]);
+      };
       this.desktopIcons.appendChild(icon);
     });
   },
@@ -247,7 +254,6 @@ Button "DE"  { greeting = "Hallo" }`,
         };
         const childWin = OS.openWindow(name, '📄', (cw) => {
           cw.body.appendChild(contentEl);
-          return cw.el;
         }, childOpts);
         return childWin;
       },
@@ -344,6 +350,16 @@ Button "DE"  { greeting = "Hallo" }`,
       if (win.minimized) { win.minimized = false; win.el.classList.remove('minimized'); this.setActive(id); }
       else if (this.activeWin?.id === id) { this.minimizeWindow(id); }
       else { this.setActive(id); }
+    };
+    item.oncontextmenu = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const win = this.windows.find(w => w.id === id);
+      if (!win) return;
+      this.showContextMenu(e.clientX, e.clientY, [
+        { label: win.minimized ? 'Restore' : 'Minimize', action: 'minimize', cb: () => this.minimizeWindow(id) },
+        { label: 'Close', action: 'close', cb: () => win.close() },
+      ]);
     };
     this.taskbarItemsEl.appendChild(item);
     this.taskbarItems.set(id, item);
@@ -477,39 +493,47 @@ Button "DE"  { greeting = "Hallo" }`,
   openMenu() { this.startMenu.classList.remove('hidden'); this.menuOpen = true; },
   closeMenu() { this.startMenu.classList.add('hidden'); this.menuOpen = false; },
 
+  showContextMenu(x, y, items) {
+    const ctx = document.getElementById('context-menu');
+    ctx.style.display = 'block';
+    ctx.style.left = x + 'px';
+    ctx.style.top = y + 'px';
+    ctx.innerHTML = items.map(item =>
+      item.separator
+        ? '<div class="ctx-sep"></div>'
+        : `<div class="ctx-item" data-action="${item.action}">${item.label}</div>`
+    ).join('');
+    ctx._callbacks = {};
+    items.forEach(item => { if (item.action && item.cb) ctx._callbacks[item.action] = item.cb; });
+  },
+
   setupContextMenu() {
     const ctx = document.getElementById('context-menu');
     document.getElementById('desktop').addEventListener('contextmenu', (e) => {
+      if (e.target.closest('.desktop-icon')) return;
       e.preventDefault();
-      ctx.style.display = 'block';
-      ctx.style.left = e.clientX + 'px';
-      ctx.style.top = e.clientY + 'px';
-      ctx.innerHTML = `
-        <div class="ctx-item" data-action="new-note">New Text File</div>
-        <div class="ctx-item" data-action="new-wl">New WebLang App</div>
-        <div class="ctx-sep"></div>
-        <div class="ctx-item" data-action="export">Export WebOS</div>
-        <div class="ctx-item" data-action="import">Import WebOS</div>
-        <div class="ctx-sep"></div>
-        <div class="ctx-item" data-action="change-bg">Change Wallpaper</div>
-        <div class="ctx-sep"></div>
-        <div class="ctx-item" data-action="reset" style="color:#f48771;">Reset WebOS</div>
-      `;
+      this.showContextMenu(e.clientX, e.clientY, [
+        { label: 'New Text File', action: 'new-note', cb: () => this.launch('notepad') },
+        { label: 'New WebLang App', action: 'new-wl', cb: () => this.launch('codeditor') },
+        { separator: true },
+        { label: 'Export WebOS', action: 'export', cb: () => this.exportWebOS() },
+        { label: 'Import WebOS', action: 'import', cb: () => this.importWebOS() },
+        { separator: true },
+        { label: 'Change Wallpaper', action: 'change-bg', cb: () => this.launch('wallpaper') },
+        { separator: true },
+        { label: 'Reset WebOS', action: 'reset', style: 'color:#f48771;', cb: () => {
+          if (confirm('Delete all files, wallpaper, and reset WebOS?')) {
+            localStorage.clear();
+            location.reload();
+          }
+        }},
+      ]);
     });
     ctx.addEventListener('click', (e) => {
       const action = e.target.dataset.action;
       ctx.style.display = 'none';
-      if (action === 'new-note') { this.launch('notepad'); }
-      else if (action === 'new-wl') { this.launch('codeditor'); }
-      else if (action === 'change-bg') { this.launch('wallpaper'); }
-      else if (action === 'export') { this.exportWebOS(); }
-      else if (action === 'import') { this.importWebOS(); }
-      else if (action === 'reset') {
-        if (confirm('Delete all files, wallpaper, and reset WebOS?')) {
-          localStorage.clear();
-          location.reload();
-        }
-      }
+      const cb = ctx._callbacks && ctx._callbacks[action];
+      if (cb) cb();
     });
     document.addEventListener('click', () => { ctx.style.display = 'none'; });
   },
