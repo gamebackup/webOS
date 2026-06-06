@@ -103,7 +103,7 @@ Button "DE"  { greeting = "Hallo" }`,
       fs[name] = code;
     }
     localStorage.setItem('webfs', JSON.stringify(fs));
-  }
+  },
 
   loadWallpaper() {
     const desktop = document.getElementById('desktop');

@@ -911,7 +911,7 @@ Button "+" { count = count + 1; update display }</code></pre>
 </ul>`
       },
       {
-        title: 'You're Ready!',
+        title: "You're Ready!",
         icon: '🚀',
         body: `<p style="color:#aaa;font-size:14px;line-height:1.7;">That's the tour! Here's what you can do next:</p>
 <ul style="color:#aaa;font-size:13px;line-height:2;margin-top:12px;padding-left:20px;">
