@@ -319,9 +319,18 @@ class WebLangInterpreter {
   }
 
   interpolate(s) {
-    return s.replace(/\{([^}]+)\}/g, (_, id) => {
-      const val = this.resolveVar(id.trim());
-      return val === null || val === undefined ? '' : String(val);
+    return s.replace(/\{([^}]+)\}/g, (_, exprText) => {
+      try {
+        const exprLexer = new WebLangLexer(exprText.trim());
+        const exprTokens = exprLexer.tokenize();
+        const exprParser = new WebLangParser(exprTokens);
+        const ast = exprParser.expression();
+        const val = this.eval(ast);
+        return val === null || val === undefined ? '' : String(val);
+      } catch(e) {
+        console.warn('WebLang interpolation error:', e.message);
+        return '';
+      }
     });
   }
 
@@ -371,13 +380,13 @@ class WebLangInterpreter {
     const callee = ast.callee.t === 'Ident' ? ast.callee.v : this.eval(ast.callee);
     const args = ast.args.map(a => this.eval(a));
     if (typeof callee === 'function') return callee(...args);
-    const fn = this.resolveVar(callee);
-    if (typeof fn === 'function') return fn(...args);
     if (callee === 'alert') { alert(args[0]); return null; }
     if (callee === 'rand') { const [min=0,max=1] = args; return Math.floor(Math.random() * (max-min)) + min; }
     if (callee === 'len') { const v = args[0]; return Array.isArray(v) ? v.length : String(v||'').length; }
     if (callee === 'parseNum') { return parseFloat(args[0]) || 0; }
     if (callee === 'str') { return String(args[0]||''); }
+    const fn = this.resolveVar(callee);
+    if (typeof fn === 'function') return fn(...args);
     this.error(`Unknown function: ${callee}`);
   }
 
@@ -613,9 +622,7 @@ class WebLangInterpreter {
       for (let child of children) {
         if (child.nodeType === 3) {
           const txt = child.textContent;
-          const newTxt = txt.replace(/\{([^}]+)\}/g, (_, id) => {
-            try { return String(this.resolveVar(id.trim()) ?? ''); } catch(e) { console.warn('WebLang update error:', e); return ''; }
-          });
+          const newTxt = this.interpolate(txt);
           if (newTxt !== txt) child.textContent = newTxt;
         }
       }

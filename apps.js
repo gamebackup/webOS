@@ -164,10 +164,10 @@ result = 0
 Input a placeholder:"First number"
 Input b placeholder:"Second number"
 
-Button "Add" { result = a + b; update }
-Button "Sub" { result = a - b; update }
-Button "Mul" { result = a * b; update }
-Button "Div" { result = a / b; update }
+Button "Add" { result = a + b; update result }
+Button "Sub" { result = a - b; update result }
+Button "Mul" { result = a * b; update result }
+Button "Div" { result = a / b; update result }
 
 Text "Result: {result}" as result
 `
