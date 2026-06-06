@@ -40,7 +40,7 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; overflow:hidden;
 #clock { color:#aaa; font-size:12px; padding:0 12px; white-space:nowrap; }
 
 /* Start Menu */
-#start-menu { position:fixed; bottom:48px; left:0; width:320px; max-height:400px; background:rgba(30,30,30,.98); backdrop-filter:blur(16px); border-radius:8px 8px 0 0; border:1px solid rgba(255,255,255,.08); border-bottom:none; z-index:1999; overflow:hidden; }
+#start-menu { position:fixed; bottom:48px; left:0; width:320px; max-height:400px; background:rgba(30,30,30,.98); backdrop-filter:blur(16px); border-radius:8px 8px 0 0; border:1px solid rgba(255,255,255,.08); border-bottom:none; z-index:1999; overflow-y:auto; }
 #start-menu.hidden { display:none; }
 #start-menu-content { padding:8px; display:flex; flex-direction:column; gap:2px; }
 .start-menu-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:6px; cursor:pointer; color:#ccc; font-size:13px; }

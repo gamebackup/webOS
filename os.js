@@ -43,13 +43,13 @@ const OS = {
     if (Object.keys(fs).length > 0) return;
 
     const defaults = {
-      'counter.wl': `// Counter App
+      'system-apps/counter.wl': `// Counter App
 count = 0
 Text "Counter: {count}" as display
 Button "+" { count = count + 1; update display }
 Button "-" { if count > 0 { count = count - 1 }; update display }
 Button "Reset" { count = 0; update display }`,
-      'todo.wl': `// Todo List
+      'system-apps/todo.wl': `// Todo List
 todos = []
 task = ""
 Text "My Todo List"
@@ -65,7 +65,7 @@ Text "Tasks: {len(todos)}" as count
 for i in len(todos) {
   Text "{i + 1}. {todos[i]}"
 }`,
-      'calculator.wl': `// Calculator
+      'system-apps/calculator.wl': `// Calculator
 a = 0; b = 0; result = 0
 Text "Calculator"
 Input a placeholder:"First"
@@ -75,7 +75,7 @@ Button "Sub" { result = a - b; update }
 Button "Mul" { result = a * b; update }
 Button "Div" { if b != 0 { result = a / b } else { result = "ERR" }; update }
 Text "= {result}" as out`,
-      'paint.wl': `// WebLang Painter
+      'system-apps/paint.wl': `// WebLang Painter
 Canvas width:400 height:300 as canvas {
   onDown { set canvas.fillCircle = [mouseX, mouseY, 4] }
   onMove { set canvas.fillCircle = [mouseX, mouseY, 4] }
@@ -84,13 +84,13 @@ Button "Red"   { set canvas.fillStyle = "red" }
 Button "Blue"  { set canvas.fillStyle = "blue" }
 Button "Black" { set canvas.fillStyle = "black" }
 Button "Clear" { set canvas.clear = [] }`,
-      'dice.wl': `// Dice Roller
+      'system-apps/dice.wl': `// Dice Roller
 Text "Dice Roller"
 Button "Roll!" {
   result = rand(1, 7)
   Text "You rolled a {result}!"
 }`,
-      'greeting.wl': `// Greeting App
+      'system-apps/greeting.wl': `// Greeting App
 name = ""; greeting = "Hello"
 Text "Greeting App"
 Input name placeholder:"Your name"
@@ -426,6 +426,8 @@ Button "DE"  { greeting = "Hallo" }`,
     // Separator
     const more = [
       { id:'info', icon:'ℹ️', label:'About WebOS', desc:'Version info' },
+      { id:'new-instance', icon:'🆕', label:'New Instance', desc:'Open a fresh WebOS session' },
+      { id:'reset', icon:'🗑️', label:'Reset WebOS', desc:'Delete all data and start over' },
     ];
     items.forEach(item => {
       const el = document.createElement('div');
@@ -441,7 +443,19 @@ Button "DE"  { greeting = "Hallo" }`,
       const el = document.createElement('div');
       el.className = 'start-menu-item';
       el.innerHTML = `<span class="smi-icon">${item.icon}</span><div><div>${item.label}</div><div class="smi-desc">${item.desc}</div></div>`;
-      el.onclick = () => { this.launch(item.id); this.closeMenu(); };
+      el.onclick = () => {
+        if (item.id === 'new-instance') {
+          window.open(window.location.href, '_blank');
+        } else if (item.id === 'reset') {
+          if (confirm('Delete all files, wallpaper, and reset WebOS?')) {
+            localStorage.clear();
+            location.reload();
+          }
+        } else {
+          this.launch(item.id);
+        }
+        this.closeMenu();
+      };
       content.appendChild(el);
     });
   },
@@ -465,6 +479,8 @@ Button "DE"  { greeting = "Hallo" }`,
         <div class="ctx-item" data-action="import">Import WebOS</div>
         <div class="ctx-sep"></div>
         <div class="ctx-item" data-action="change-bg">Change Wallpaper</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="reset" style="color:#f48771;">Reset WebOS</div>
       `;
     });
     ctx.addEventListener('click', (e) => {
@@ -475,6 +491,12 @@ Button "DE"  { greeting = "Hallo" }`,
       else if (action === 'change-bg') { this.launch('wallpaper'); }
       else if (action === 'export') { this.exportWebOS(); }
       else if (action === 'import') { this.importWebOS(); }
+      else if (action === 'reset') {
+        if (confirm('Delete all files, wallpaper, and reset WebOS?')) {
+          localStorage.clear();
+          location.reload();
+        }
+      }
     });
     document.addEventListener('click', () => { ctx.style.display = 'none'; });
   },
