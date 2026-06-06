@@ -280,6 +280,8 @@ class WebLangInterpreter {
     this.outputEl = outputEl;
     this.global = { $appName: 'Untitled', $vars: {}, $functions: {} };
     this.envStack = [this.global];
+    this._programStmts = null;
+    this._rerunning = false;
   }
   get env() { return this.envStack[this.envStack.length - 1]; }
 
@@ -346,6 +348,11 @@ class WebLangInterpreter {
   }
 
   setVar(name, val) {
+    if (this._rerunning) {
+      for (let i = this.envStack.length - 1; i >= 0; i--) {
+        if (name in this.envStack[i].$vars) return;
+      }
+    }
     for (let i = this.envStack.length - 1; i >= 0; i--) {
       if (name in this.envStack[i].$vars) { this.envStack[i].$vars[name] = val; return; }
     }
@@ -467,7 +474,7 @@ class WebLangInterpreter {
   evalFunction(ast) {
     const fn = (...args) => {
       const frame = { $vars: {}, $functions: {}, $appName: this.env.$appName };
-      for (let i = 0; i < ast.params.length; i++) frame.$vars[ast.params[i]] = args[i] || null;
+      for (let i = 0; i < ast.params.length; i++) frame.$vars[ast.params[i]] = i < args.length ? args[i] : null;
       this.envStack.push(frame);
       let result = null;
       for (let stmt of ast.body) {
@@ -497,8 +504,14 @@ class WebLangInterpreter {
       default: el = document.createElement('div');
     }
     if (ast.text) {
-      const textVal = String(this.eval(ast.text) ?? '');
-      if (ast.type === 'Image') { el.src = textVal; } else if (ast.type !== 'Canvas') { el.textContent = textVal; }
+      if (ast.type === 'Image') {
+        el.src = String(this.eval(ast.text) ?? '');
+      } else if (ast.type !== 'Canvas') {
+        const raw = ast.text.t === 'Str' ? ast.text.v : String(this.eval(ast.text) ?? '');
+        const display = this.interpolate(raw);
+        el.textContent = display;
+        if (display !== raw) el._wlTemplate = raw;
+      }
     }
     for (let p of ast.props) {
       if (p.key === 'placeholder') el.placeholder = String(this.eval(p.val) ?? '');
@@ -577,7 +590,13 @@ class WebLangInterpreter {
     if (ast.type === 'Input') {
       el.addEventListener('input', () => {
         const name = ast.text ? (ast.text.t === 'Ident' ? ast.text.v : String(this.eval(ast.text))) : null;
-        if (name) this.setVar(name, el.value);
+        if (name) {
+          let val = el.value;
+          try {
+            if (typeof this.resolveVar(name) === 'number') val = parseFloat(val) || 0;
+          } catch(e) {}
+          this.setVar(name, val);
+        }
       });
     }
     if (ast.type === 'Link' && ast.body) {
@@ -611,21 +630,27 @@ class WebLangInterpreter {
         if (target && target._app) target._app.update();
       }
     } else {
-      const els = this.outputEl.querySelectorAll('[data-wl-id]');
-      els.forEach(el => this._updateElementText(el));
+      this.rerun();
     }
+  }
+
+  rerun() {
+    if (!this._programStmts) return;
+    this._rerunning = true;
+    while (this.outputEl && this.outputEl.firstChild) {
+      this.outputEl.removeChild(this.outputEl.firstChild);
+    }
+    const savedEnv = this.envStack;
+    this.eval(this._programStmts);
+    this._rerunning = false;
   }
 
   _updateElementText(el) {
     try {
-      const children = Array.from(el.childNodes);
-      for (let child of children) {
-        if (child.nodeType === 3) {
-          const txt = child.textContent;
-          const newTxt = this.interpolate(txt);
-          if (newTxt !== txt) child.textContent = newTxt;
-        }
-      }
+      const template = el._wlTemplate;
+      if (!template) return;
+      const newTxt = this.interpolate(template);
+      if (newTxt !== el.textContent) el.textContent = newTxt;
     } catch(e) {}
   }
 
@@ -652,6 +677,7 @@ class WebLangRuntime {
     const parser = new WebLangParser(tokens);
     const ast = parser.parse();
     const interp = new WebLangInterpreter(outputEl);
+    interp._programStmts = ast.stmts;
     interp.eval(ast);
     return interp;
   }
