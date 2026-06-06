@@ -635,7 +635,7 @@ class WebLangInterpreter {
   }
 
   rerun() {
-    if (!this._programStmts) return;
+    if (!this._programStmts || this._rerunning) return;
     this._rerunning = true;
     while (this.outputEl && this.outputEl.firstChild) {
       this.outputEl.removeChild(this.outputEl.firstChild);
