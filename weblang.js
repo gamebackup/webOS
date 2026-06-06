@@ -115,7 +115,7 @@ class WebLangParser {
   elementStatement(type) {
     let textExpr = null;
     const nxt = this.peek();
-    if (nxt.t === 'STRING' || nxt.t === 'NUMBER' || nxt.t === 'ID' || (nxt.t === 'OP' && nxt.v === '-')) {
+    if (nxt.t === 'STRING' || nxt.t === 'NUMBER' || (nxt.t === 'ID' && !(this.tokens[this.i+1] && this.tokens[this.i+1].v === ':')) || (nxt.t === 'OP' && nxt.v === '-')) {
       textExpr = this.expression();
     }
     let props = [];
