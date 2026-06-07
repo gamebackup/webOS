@@ -51,42 +51,7 @@ WebOS.apps.codeditor = {
   create: function(win) {
     const app = document.createElement('div');
     app.className = 'code-editor-app';
-    const defaultCode = `// WebLang - Easy to learn, hard to master
-// Create your first app:
-
-Text "Welcome to WebLang!"
-Text "Let's build something cool."
-
-count = 0
-
-Text "Count: {count}" as counter
-
-Button "Click me!" {
-  count = count + 1
-  update
-}
-
-name = ""
-
-Input name placeholder:"Your name"
-
-Button "Greet" {
-  if name != "" {
-    Text "Hello, {name}! Welcome to WebOS."
-  } else {
-    Text "Please enter your name!"
-  }
-}
-
-Button "Counter App Example" {
-  // Launch a counter app inline
-  Text "--- Counter ---"
-  c = 0
-  Text "Value: {c}" as disp
-  Button "+" { c = c + 1; update disp }
-  Button "-" { c = c - 1; update disp }
-}
-`;
+    const defaultCode = ``;
     app.innerHTML = `
       <div class="code-editor-toolbar">
         <button class="ce-run">&#9654; Run</button>
