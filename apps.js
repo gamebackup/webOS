@@ -1,4 +1,4 @@
-/* Built-in WebOS Apps */
+/* WebOS Built-in Apps */
 
 const WebOS = { apps: {}, lang: new WebLangRuntime() };
 
@@ -12,34 +12,44 @@ WebOS.apps.notepad = {
       <div class="notepad-toolbar">
         <button class="np-new">New</button>
         <button class="np-save">Save</button>
-        <button class="np-save-as">Save As</button>
-        <span class="filename">untitled.txt</span>
+        <button class="np-saveas">Save As</button>
+        <span class="np-filename">untitled.txt</span>
       </div>
       <textarea spellcheck="false"></textarea>`;
     const ta = app.querySelector('textarea');
-    const fnSpan = app.querySelector('.filename');
-    let currentFile = 'files/untitled.txt';
+    let currentFile = null;
 
-    const files = JSON.parse(localStorage.getItem('webfs') || '{}');
-    if (files[currentFile]) { ta.value = files[currentFile]; }
+    const loadList = () => {
+      const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+      const files = Object.keys(fs).filter(k => k.startsWith('files/'));
+      return files;
+    };
 
     app.querySelector('.np-new').onclick = () => {
-      if (ta.value && !confirm('Discard current file?')) return;
-      ta.value = ''; currentFile = 'files/untitled.txt'; fnSpan.textContent = 'untitled.txt';
+      if (ta.value && !confirm('Discard current document?')) return;
+      ta.value = ''; currentFile = null;
+      app.querySelector('.np-filename').textContent = 'untitled.txt';
     };
     app.querySelector('.np-save').onclick = () => {
-      const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
-      fs[currentFile] = ta.value;
-      localStorage.setItem('webfs', JSON.stringify(fs));
-      win.title.textContent = currentFile.replace(/^(files|apps|system-apps)\//, '');
+      if (currentFile) {
+        const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+        fs['files/' + currentFile] = ta.value;
+        localStorage.setItem('webfs', JSON.stringify(fs));
+        alert('Saved!');
+      } else {
+        app.querySelector('.np-saveas').click();
+      }
     };
-    app.querySelector('.np-save-as').onclick = () => {
-      const name = prompt('Filename:', currentFile.replace('files/', ''));
-      if (!name) return;
-      currentFile = 'files/' + name; fnSpan.textContent = name;
-      const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
-      fs[currentFile] = ta.value;
-      localStorage.setItem('webfs', JSON.stringify(fs));
+    app.querySelector('.np-saveas').onclick = () => {
+      const name = prompt('File name:', currentFile || 'note.txt');
+      if (name) {
+        const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+        fs['files/' + name] = ta.value;
+        localStorage.setItem('webfs', JSON.stringify(fs));
+        currentFile = name;
+        app.querySelector('.np-filename').textContent = name;
+        alert('Saved as ' + name);
+      }
     };
     return app;
   }
@@ -94,38 +104,35 @@ WebOS.apps.codeditor = {
       const examples = [
         {
           name: 'Todo List',
-          code: `// Todo List App
-Text "My Todo List"
-
+          code: `// Todo List
 todos = []
-newTask = ""
+task = ""
 
-Input newTask placeholder:"Enter a task"
+Text "My Todo List"
+Input task placeholder:"What needs to be done?"
 
 Button "Add" {
-  if newTask != "" {
-    todos = todos + [newTask]
-    newTask = ""
+  if task != "" {
+    todos = todos + task
+    task = ""
     update
   }
 }
 
-Text "Tasks: {len(todos)}" as taskList
+Text "Tasks: {len(todos)}" as count
 
 for i in len(todos) {
   Text "{i + 1}. {todos[i]}"
-}
-`
+}`
         },
         {
           name: 'Calculator',
-          code: `// Simple Calculator
-Text "Calculator"
-
+          code: `// Calculator
 a = 0
 b = 0
 result = 0
 
+Text "Calculator"
 Input a placeholder:"First number"
 Input b placeholder:"Second number"
 
@@ -206,62 +213,31 @@ WebOS.apps.wallpaper = {
       <h3>Image URL</h3>
       <div class="img-url-row">
         <input type="text" id="wp-url" placeholder="https://example.com/wallpaper.jpg">
-        <button id="wp-apply-url">Set Image</button>
-        <button id="wp-clear-img">Clear</button>
+        <button id="wp-apply-img">Set Image</button>
       </div>
-      <h3>Preview</h3>
-      <div class="wallpaper-preview" id="wp-preview" style="background:${getCurrentBg()}">`;
-    const desktop = document.getElementById('desktop');
-    const preview = app.querySelector('#wp-preview');
-
-    function getCurrentBg() {
-      const bg = localStorage.getItem('wallpaper');
-      return bg || '#2b2b2b';
-    }
-
-    function applyAll() {
-      const bg = localStorage.getItem('wallpaper');
-      const img = localStorage.getItem('wallpaper-img');
-      if (img && img !== 'null') {
-        desktop.style.backgroundImage = `url(${img})`;
-        desktop.style.backgroundColor = 'transparent';
-        preview.style.backgroundImage = `url(${img})`;
-        preview.style.backgroundColor = 'transparent';
-      } else {
-        desktop.style.backgroundImage = 'none';
-        desktop.style.backgroundColor = bg || '#2b2b2b';
-        preview.style.backgroundImage = 'none';
-        preview.style.backgroundColor = bg || '#2b2b2b';
-      }
-      app.querySelector('#wp-color').value = bg || '#2b2b2b';
-    }
-
+      <button id="wp-reset" style="margin-top:12px;background:#3c3c3c;border:1px solid #555;color:#ccc;padding:8px 16px;border-radius:4px;cursor:pointer;">Reset to Default</button>`;
     app.querySelector('#wp-apply-color').onclick = () => {
-      const color = app.querySelector('#wp-color').value;
-      localStorage.setItem('wallpaper', color);
+      const c = app.querySelector('#wp-color').value;
+      localStorage.setItem('wallpaper', c);
       localStorage.removeItem('wallpaper-img');
-      applyAll();
+      OS.loadWallpaper();
     };
     app.querySelectorAll('.preset').forEach(el => {
       el.onclick = () => {
-        const color = el.dataset.color;
-        localStorage.setItem('wallpaper', color);
+        localStorage.setItem('wallpaper', el.dataset.color);
         localStorage.removeItem('wallpaper-img');
-        applyAll();
+        OS.loadWallpaper();
       };
     });
-    app.querySelector('#wp-apply-url').onclick = () => {
+    app.querySelector('#wp-apply-img').onclick = () => {
       const url = app.querySelector('#wp-url').value.trim();
-      if (!url) return;
-      localStorage.setItem('wallpaper-img', url);
-      localStorage.setItem('wallpaper', '#1a1a2e');
-      applyAll();
+      if (url) { localStorage.setItem('wallpaper-img', url); OS.loadWallpaper(); }
     };
-    app.querySelector('#wp-clear-img').onclick = () => {
+    app.querySelector('#wp-reset').onclick = () => {
+      localStorage.removeItem('wallpaper');
       localStorage.removeItem('wallpaper-img');
-      applyAll();
+      OS.loadWallpaper();
     };
-    applyAll();
     return app;
   }
 };
@@ -273,30 +249,41 @@ WebOS.apps.store = {
     const app = document.createElement('div');
     app.style.padding = '16px';
     app.innerHTML = `
-      <h3 style="font-weight:400;margin-bottom:8px;">WebOS App Store</h3>
-      <p style="color:#888;font-size:13px;margin-bottom:16px;">Install community apps by pasting their code below.</p>
+      <h3>App Store</h3>
+      <p style="color:#888;font-size:13px;margin-bottom:8px;">Paste WebLang code below and install or save it.</p>
       <textarea id="store-code" placeholder="Paste WebLang app code here..." style="width:100%;height:200px;background:#2d2d2d;border:1px solid #444;color:#ccc;border-radius:4px;padding:10px;font-family:monospace;font-size:13px;resize:vertical;"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button id="store-install" style="background:#3c3c3c;border:1px solid #555;color:#ccc;padding:8px 16px;border-radius:4px;cursor:pointer;">Install & Run</button>
-        <button id="store-publish" style="background:#3c3c3c;border:1px solid #555;color:#ccc;padding:8px 16px;border-radius:4px;cursor:pointer;">Save as App</button>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button id="store-run" style="background:#0078d4;border:none;color:#fff;padding:6px 16px;border-radius:4px;cursor:pointer;">Install & Run</button>
+        <button id="store-save" style="background:#3c3c3c;border:1px solid #555;color:#ccc;padding:6px 16px;border-radius:4px;cursor:pointer;">Save as App</button>
       </div>
-      <div id="store-output" style="margin-top:12px;"></div>`;
-    const codeArea = app.querySelector('#store-code');
+      <div id="store-output" style="margin-top:8px;"></div>`;
+    const codeEl = app.querySelector('#store-code');
     const output = app.querySelector('#store-output');
-    app.querySelector('#store-install').onclick = () => {
-      output.innerHTML = '';
-      const container = document.createElement('div');
-      container.className = 'weblang-app';
-      try { WebOS.lang.runApp(codeArea.value, container); output.appendChild(container); }
-      catch(e) { output.innerHTML = `<div style="color:#f48771;">Error: ${e.message}</div>`; }
+    app.querySelector('#store-run').onclick = () => {
+      const code = codeEl.value.trim();
+      if (!code) { output.textContent = 'Paste some code first!'; return; }
+      output.textContent = 'Running...';
+      output.style.color = '#888';
+      try {
+        WebOS.lang.runApp(code, output);
+        output.style.color = '#4ec9b0';
+        output.textContent = 'App running above!';
+      } catch(e) {
+        output.style.color = '#f48771';
+        output.textContent = 'Error: ' + e.message;
+      }
     };
-    app.querySelector('#store-publish').onclick = () => {
-      const name = prompt('App name:');
-      if (!name) return;
-      const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
-      fs[`apps/${name}.wl`] = codeArea.value;
-      localStorage.setItem('webfs', JSON.stringify(fs));
-      output.innerHTML = `<div style="color:#89d185;">Saved as apps/${name}.wl!</div>`;
+    app.querySelector('#store-save').onclick = () => {
+      const code = codeEl.value.trim();
+      if (!code) { output.textContent = 'Paste some code first!'; return; }
+      const name = prompt('App name (without .wl):');
+      if (name) {
+        const fs = JSON.parse(localStorage.getItem('webfs') || '{}');
+        fs['apps/' + name + '.wl'] = code;
+        localStorage.setItem('webfs', JSON.stringify(fs));
+        output.style.color = '#4ec9b0';
+        output.textContent = 'Saved as "' + name + '.wl" in Apps folder!';
+      }
     };
     return app;
   }
@@ -307,141 +294,57 @@ WebOS.apps.paint = {
   name: 'Paint', icon: '🖌️',
   create: function(win) {
     const app = document.createElement('div');
-    app.style.cssText = 'display:flex;flex-direction:column;height:100%;';
-
-    const toolbar = document.createElement('div');
-    toolbar.style.cssText = 'display:flex;gap:6px;padding:6px 10px;background:#252525;border-bottom:1px solid #333;align-items:center;flex-wrap:wrap;flex-shrink:0;';
-
-    const colors = ['#000000','#ffffff','#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff','#ff8800','#8800ff','#0088ff','#ff0088','#888888','#444444'];
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color'; colorPicker.value = '#000000';
-    colorPicker.style.cssText = 'width:32px;height:32px;padding:1px;border:none;border-radius:4px;cursor:pointer;background:transparent;';
-    toolbar.appendChild(colorPicker);
-
-    const colorBtns = document.createElement('div');
-    colorBtns.style.cssText = 'display:flex;gap:2px;';
-    colors.forEach(c => {
-      const btn = document.createElement('button');
-      btn.style.cssText = `width:20px;height:20px;border-radius:3px;border:1px solid #555;cursor:pointer;background:${c};padding:0;`;
-      if (c === '#000000') btn.style.borderColor = '#569cd6';
-      btn.onclick = () => { colorPicker.value = c; activeColor = c; updateActiveColor(); };
-      colorBtns.appendChild(btn);
-    });
-    toolbar.appendChild(colorBtns);
-
-    toolbar.appendChild(document.createTextNode(' '));
-
-    const brushSizes = [2, 4, 8, 12, 20, 30];
-    let activeSize = 2;
-    const sizeBtns = document.createElement('div');
-    sizeBtns.style.cssText = 'display:flex;gap:4px;align-items:center;';
-    brushSizes.forEach(s => {
-      const btn = document.createElement('button');
-      btn.textContent = s;
-      btn.style.cssText = `width:28px;height:28px;border-radius:4px;border:1px solid #555;cursor:pointer;font-size:11px;color:#ccc;background:${s === activeSize ? '#3c3c3c' : 'transparent'};`;
-      btn.onclick = () => { activeSize = s; sizeBtns.querySelectorAll('button').forEach(b => b.style.background = 'transparent'); btn.style.background = '#3c3c3c'; };
-      sizeBtns.appendChild(btn);
-    });
-    toolbar.appendChild(sizeBtns);
-
-    const eraserBtn = document.createElement('button');
-    eraserBtn.textContent = 'Eraser';
-    eraserBtn.style.cssText = 'padding:4px 10px;border-radius:4px;border:1px solid #555;cursor:pointer;font-size:12px;color:#ccc;background:transparent;';
-    eraserBtn.onclick = () => { isEraser = !isEraser; eraserBtn.style.background = isEraser ? '#555' : 'transparent'; colorPicker.value = getBgColor(); activeColor = getBgColor(); };
-    toolbar.appendChild(eraserBtn);
-
-    const clearBtn = document.createElement('button');
-    clearBtn.textContent = 'Clear';
-    clearBtn.style.cssText = 'padding:4px 10px;border-radius:4px;border:1px solid #555;cursor:pointer;font-size:12px;color:#ccc;background:transparent;';
-    clearBtn.onclick = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); };
-    toolbar.appendChild(clearBtn);
-
-    const undoBtn = document.createElement('button');
-    undoBtn.textContent = 'Undo';
-    undoBtn.style.cssText = 'padding:4px 10px;border-radius:4px;border:1px solid #555;cursor:pointer;font-size:12px;color:#ccc;background:transparent;';
-    toolbar.appendChild(undoBtn);
-
-    const canvasWrap = document.createElement('div');
-    canvasWrap.style.cssText = 'flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#1a1a1a;';
-
-    const canvas = document.createElement('canvas');
-    const rect = canvasWrap.getBoundingClientRect();
+    app.className = 'paint-app';
+    const W = 700, H = 400;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = 800 * dpr; canvas.height = 600 * dpr;
-    canvas.style.width = '800px'; canvas.style.height = '600px';
-    canvas.style.cssText += ';cursor:crosshair;border-radius:4px;';
-
+    app.innerHTML = `
+      <canvas width="${W * dpr}" height="${H * dpr}" style="width:${W}px;height:${H}px;background:#fff;border:1px solid #333;display:block;cursor:crosshair;"></canvas>
+      <div class="paint-toolbar">
+        <div class="paint-colors">
+          ${['#000','#fff','#f00','#0f0','#00f','#ff0','#f0f','#0ff','#888','#a52a2a','#ffa500','#800080','#ffc0cb','#00fa9a'].map(c => `<div class="paint-color" style="background:${c}"></div>`).join('')}
+          <input type="color" class="paint-color" id="paint-custom" title="Custom">
+        </div>
+        <div class="paint-sizes">
+          ${[2,4,6,10,16,24].map(s => `<div class="paint-size" data-size="${s}">${s}</div>`).join('')}
+        </div>
+        <button class="paint-eraser" title="Eraser">Eraser</button>
+        <button class="paint-clear" title="Clear">Clear</button>
+        <button class="paint-undo" title="Undo">Undo</button>
+        <span class="paint-status">Brush</span>
+      </div>`;
+    const canvas = app.querySelector('canvas');
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 800, 600);
-    ctx.fillStyle = '#000000';
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-
-    canvasWrap.appendChild(canvas);
-    app.appendChild(toolbar);
-    app.appendChild(canvasWrap);
-
-    let isDrawing = false;
-    let lastX = 0, lastY = 0;
-    let activeColor = '#000000';
-    let isEraser = false;
-    let hasDrawn = false;
-    let undoStack = [];
-    const maxUndo = 30;
-
-    function getBgColor() {
-      const bg = localStorage.getItem('wallpaper') || '#2b2b2b';
-      return bg;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,W,H);
+    let drawing = false, color = '#000', size = 4, tool = 'brush';
+    const undos = [];
+    function saveState() { undos.push(ctx.getImageData(0,0,W*dpr,H*dpr)); if (undos.length > 30) undos.shift(); }
+    function draw(x,y) {
+      ctx.fillStyle = tool === 'eraser' ? '#fff' : color;
+      ctx.beginPath(); ctx.arc(x,y,size/2,0,Math.PI*2); ctx.fill();
     }
-
-    function updateActiveColor() {
-      colorBtns.querySelectorAll('button').forEach(b => b.style.borderColor = b.style.background === activeColor ? '#569cd6' : '#555');
-    }
-
-    function saveState() {
-      undoStack.push(canvas.toDataURL());
-      if (undoStack.length > maxUndo) undoStack.shift();
-    }
-
-    canvas.addEventListener('mousedown', (e) => {
-      const r = canvas.getBoundingClientRect();
-      lastX = e.clientX - r.left; lastY = e.clientY - r.top;
-      isDrawing = true;
-      hasDrawn = false;
-      ctx.beginPath();
-      ctx.arc(lastX, lastY, activeSize / 2, 0, Math.PI * 2);
-      ctx.fillStyle = activeColor;
-      ctx.fill();
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-      if (!isDrawing) return;
-      if (!hasDrawn) { hasDrawn = true; saveState(); }
-      const r = canvas.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      ctx.strokeStyle = isEraser ? getBgColor() : activeColor;
-      ctx.lineWidth = activeSize;
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      lastX = x; lastY = y;
-    });
-
-    canvas.addEventListener('mouseup', () => { isDrawing = false; });
-    canvas.addEventListener('mouseleave', () => { isDrawing = false; });
-
-    undoBtn.onclick = () => {
-      if (undoStack.length === 0) return;
-      const img = new Image();
-      img.onload = () => {
-        ctx.clearRect(0, 0, 800, 600);
-        ctx.drawImage(img, 0, 0);
-        undoStack.pop();
-      };
-      img.src = undoStack[undoStack.length - 1];
+    canvas.onmousedown = (e) => {
+      drawing = true; saveState();
+      draw(e.offsetX, e.offsetY);
     };
-
+    canvas.onmousemove = (e) => { if (drawing) draw(e.offsetX, e.offsetY); };
+    canvas.onmouseup = () => { drawing = false; };
+    canvas.onmouseleave = () => { drawing = false; };
+    app.querySelectorAll('.paint-color').forEach(el => {
+      el.onclick = () => {
+        const bg = el.style.background || el.value;
+        if (bg) { color = bg; tool = 'brush'; app.querySelector('.paint-status').textContent = 'Brush'; }
+      };
+    });
+    app.querySelectorAll('.paint-size').forEach(el => {
+      el.onclick = () => { size = parseInt(el.dataset.size); app.querySelector('.paint-status').textContent = tool === 'eraser' ? 'Eraser' : 'Brush'; };
+    });
+    app.querySelector('.paint-eraser').onclick = () => { tool = 'eraser'; app.querySelector('.paint-status').textContent = 'Eraser'; };
+    app.querySelector('.paint-clear').onclick = () => { saveState(); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,W,H); };
+    app.querySelector('.paint-undo').onclick = () => {
+      if (undos.length) { ctx.putImageData(undos.pop(),0,0); }
+    };
     return app;
   }
 };
