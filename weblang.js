@@ -519,7 +519,7 @@ class WebLangInterpreter {
       else if (p.key === 'width') { const w = this.eval(p.val); el.width = w; el.style.width = w + 'px'; }
       else if (p.key === 'height') { const h = this.eval(p.val); el.height = h; el.style.height = h + 'px'; }
       else if (p.key === 'id') el.id = String(this.eval(p.val) ?? '');
-      else if (p.key === 'wl-id') el.setAttribute('data-wl-id', String(this.eval(p.val) ?? ''));
+      else if (p.key === 'wl-id') { const n = String(this.eval(p.val) ?? ''); el.setAttribute('data-wl-id', n); this.setVar(n, el); }
       else el.setAttribute(p.key, String(this.eval(p.val) ?? ''));
     }
     if (ast.type === 'Canvas' && ast.body) {
