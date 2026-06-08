@@ -385,7 +385,20 @@ Button "DE"  { greeting = "Hallo" }`,
       win.style.top = (startTop + e.clientY - startY) + 'px';
     }, dragOpts);
     document.addEventListener('mouseup', () => {
-      if (dragging) { dragging = false; handle.classList.remove('dragging'); }
+      if (dragging) {
+        dragging = false;
+        handle.classList.remove('dragging');
+        const vw = window.innerWidth, vh = window.innerHeight;
+        let t = parseInt(win.style.top), l = parseInt(win.style.left);
+        const w = parseInt(win.style.width), h = parseInt(win.style.height);
+        const headerH = 36;
+        if (t < 0) t = 0;
+        if (t + headerH > vh) t = vh - headerH;
+        if (l + 40 > vw) l = vw - 40;
+        if (l < 0) l = 0;
+        win.style.top = t + 'px';
+        win.style.left = l + 'px';
+      }
     }, dragOpts);
   },
 
