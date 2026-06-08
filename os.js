@@ -14,8 +14,11 @@ const OS = {
   startBtn: null,
   clock: null,
   menuOpen: false,
+  pinnedApps: [],
 
   init() {
+    this.pinnedApps = JSON.parse(localStorage.getItem('pinnedApps') || '[]');
+  
     this.desktopIcons = document.getElementById('desktop-icons');
     this.winContainer = document.getElementById('windows-container');
     this.taskbarItemsEl = document.getElementById('taskbar-items');
@@ -28,6 +31,7 @@ const OS = {
     this.registerBuiltinApps();
     this.createDesktopIcons();
     this.setupTaskbar();
+    this.renderPinnedItems();
     if (!localStorage.getItem('walkthroughDone')) {
       setTimeout(() => this.launch('walkthrough'), 600);
     }
@@ -198,13 +202,13 @@ Button "DE"  { greeting = "Hallo" }`,
     const appDef = this.apps[appId];
     if (!appDef) { alert(`App "${appId}" not found`); return; }
     try {
-      this.openWindow(appDef.name, appDef.icon, (win) => appDef.create(win), extraOpts);
+      this.openWindow(appDef.name, appDef.icon, (win) => appDef.create(win), extraOpts, appId);
     } catch (e) {
       alert(`Failed to launch ${appDef.name}: ${e.message}`);
     }
   },
 
-  openWindow(title, icon, contentFn, extraOpts) {
+  openWindow(title, icon, contentFn, extraOpts, appId) {
     const id = ++this.idCounter;
     const z = ++this.zIndex;
     const win = document.createElement('div');
@@ -243,7 +247,7 @@ Button "DE"  { greeting = "Hallo" }`,
 
     const winObj = {
       id, el: win, title: winTitle, body, header,
-      appId: null, data: {},
+      appId: appId || null, data: {},
       _cleanup: [],
       minimized: false, maximized: false,
       openChild(name, contentEl) {
@@ -263,7 +267,10 @@ Button "DE"  { greeting = "Hallo" }`,
         if (idx > -1) OS.windows.splice(idx, 1);
         win.remove();
         const tbi = OS.taskbarItems.get(id);
-        if (tbi) { tbi.remove(); OS.taskbarItems.delete(id); }
+        if (tbi) {
+          tbi.remove();
+          OS.taskbarItems.delete(id);
+        }
         if (OS.activeWin === this) OS.activeWin = null;
       }
     };
@@ -356,13 +363,57 @@ Button "DE"  { greeting = "Hallo" }`,
       e.stopPropagation();
       const win = this.windows.find(w => w.id === id);
       if (!win) return;
+      const isPinned = win.appId && this.pinnedApps.includes(win.appId);
       this.showContextMenu(e.clientX, e.clientY, [
         { label: win.minimized ? 'Restore' : 'Minimize', action: 'minimize', cb: () => this.minimizeWindow(id) },
         { label: 'Close', action: 'close', cb: () => win.close() },
+        { separator: true },
+        { label: isPinned ? 'Unpin from taskbar' : 'Pin to taskbar', action: 'pin', cb: () => {
+          if (win.appId) {
+            isPinned ? this.unpinApp(win.appId) : this.pinApp(win.appId);
+          }
+        }},
       ]);
     };
     this.taskbarItemsEl.appendChild(item);
     this.taskbarItems.set(id, item);
+  },
+
+  pinApp(appId) {
+    if (!this.pinnedApps.includes(appId)) {
+      this.pinnedApps.push(appId);
+      localStorage.setItem('pinnedApps', JSON.stringify(this.pinnedApps));
+      this.renderPinnedItems();
+    }
+  },
+
+  unpinApp(appId) {
+    this.pinnedApps = this.pinnedApps.filter(id => id !== appId);
+    localStorage.setItem('pinnedApps', JSON.stringify(this.pinnedApps));
+    this.renderPinnedItems();
+  },
+
+  renderPinnedItems() {
+    const existing = this.taskbarItemsEl.querySelectorAll('.taskbar-item-pinned');
+    existing.forEach(el => el.remove());
+    const afterEl = this.taskbarItemsEl.firstChild;
+    this.pinnedApps.forEach(appId => {
+      const def = this.apps[appId] || WebOS.apps[appId];
+      if (!def) return;
+      const item = document.createElement('div');
+      item.className = 'taskbar-item taskbar-item-pinned';
+      item.innerHTML = `<span class="tbi-icon">${def.icon}</span><span class="tbi-title">${def.name}</span>`;
+      item.onclick = () => { this.launch(appId); };
+      item.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.showContextMenu(e.clientX, e.clientY, [
+          { label: 'Open', action: 'open', cb: () => this.launch(appId) },
+          { label: 'Unpin from taskbar', action: 'unpin', cb: () => this.unpinApp(appId) },
+        ]);
+      };
+      this.taskbarItemsEl.insertBefore(item, afterEl);
+    });
   },
 
   makeDraggable(win, handle, winObj) {

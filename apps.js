@@ -73,6 +73,7 @@ WebOS.apps.codeditor = {
       <div class="editor-pane">
         <textarea spellcheck="false">${defaultCode.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
       </div>
+      <div class="code-editor-resize-handle"></div>
       <div class="code-editor-output" id="ce-output"></div>`;
     const textarea = app.querySelector('textarea');
     const output = app.querySelector('#ce-output');
@@ -180,6 +181,24 @@ Button "Change to French" {
         }
       }
     };
+    // Resize output section
+    const handle = app.querySelector('.code-editor-resize-handle');
+    let resizing = false, startY, startH;
+    const resizeAc = new AbortController();
+    handle.addEventListener('mousedown', (e) => {
+      resizing = true;
+      startY = e.clientY;
+      startH = output.offsetHeight;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!resizing) return;
+      const dh = startY - e.clientY;
+      const newH = Math.max(60, Math.min(startH + dh, app.offsetHeight - 80));
+      output.style.height = newH + 'px';
+    }, { signal: resizeAc.signal });
+    document.addEventListener('mouseup', () => { resizing = false; }, { signal: resizeAc.signal });
+    win._cleanup.push(() => resizeAc.abort());
     return app;
   }
 };
