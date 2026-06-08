@@ -637,12 +637,14 @@ class WebLangInterpreter {
   rerun() {
     if (!this._programStmts || this._rerunning) return;
     this._rerunning = true;
-    while (this.outputEl && this.outputEl.firstChild) {
-      this.outputEl.removeChild(this.outputEl.firstChild);
+    try {
+      while (this.outputEl && this.outputEl.firstChild) {
+        this.outputEl.removeChild(this.outputEl.firstChild);
+      }
+      this.eval(this._programStmts);
+    } finally {
+      this._rerunning = false;
     }
-    const savedEnv = this.envStack;
-    this.eval(this._programStmts);
-    this._rerunning = false;
   }
 
   _updateElementText(el) {
